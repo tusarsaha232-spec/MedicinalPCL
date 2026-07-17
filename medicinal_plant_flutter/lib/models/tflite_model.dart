@@ -74,62 +74,34 @@ class TFLiteModel {
       final inputBuffer = Float32List.fromList(input);
       developer.log('✅ Buffer size: ${inputBuffer.length}');
 
-      developer.log('🔄 Reshaping input to 4D tensor [1, 224, 224, 3]...');
+      developer.log('🔄 Preparing output buffer...');
+      final outputShape = _interpreter.getOutputTensor(0).shape;
+      developer.log('Output shape: $outputShape');
+
+      developer.log('🔄 Running inference with flat input...');
+      late List<double> outputData;
+
       try {
-        final input4D = List<List<List<List<double>>>>.generate(
-          1,
-          (b) {
-            developer.log('  Generating batch $b');
-            return List<List<List<double>>>.generate(
-              224,
-              (y) {
-                if (y % 50 == 0) developer.log('  Generating row $y');
-                return List<List<double>>.generate(
-                  224,
-                  (x) => List<double>.generate(
-                    3,
-                    (c) {
-                      final idx = (y * 224 + x) * 3 + c;
-                      if (idx >= inputBuffer.length) {
-                        throw Exception('Index out of bounds: $idx >= ${inputBuffer.length}');
-                      }
-                      return inputBuffer[idx];
-                    },
-                  ),
-                );
-              },
-            );
-          },
-        );
-        developer.log('✅ 4D input tensor reshaped successfully');
-
-        // Proceed with inference using input4D
-        developer.log('🔄 Preparing output buffer...');
-        final outputShape = _interpreter.getOutputTensor(0).shape;
-        developer.log('Output shape: $outputShape');
-
-        late List<double> outputData;
         if (outputShape.length == 2) {
-          developer.log('Output is 2D: treating as [1, ${outputShape[1]}]');
+          developer.log('Creating 2D output [1, ${outputShape[1]}]');
           final output2D = List<List<double>>.filled(1, List<double>.filled(outputShape[1], 0.0));
-          developer.log('✅ 2D output buffer created');
-
-          developer.log('🔄 Running inference (2D)...');
-          _interpreter.run(input4D, output2D);
-          developer.log('✅ Inference completed successfully');
+          developer.log('Running interpreter.run()...');
+          _interpreter.run(inputBuffer, output2D);
+          developer.log('✅ Inference (2D) completed');
           outputData = output2D[0];
-        } else {
-          developer.log('Output is 1D: ${outputShape[0]} values');
+        } else if (outputShape.length == 1) {
+          developer.log('Creating 1D output [${outputShape[0]}]');
           final output1D = List<double>.filled(outputShape[0], 0.0);
-          developer.log('✅ 1D output buffer created');
-
-          developer.log('🔄 Running inference (1D)...');
-          _interpreter.run(input4D, output1D);
-          developer.log('✅ Inference completed successfully');
+          developer.log('Running interpreter.run()...');
+          _interpreter.run(inputBuffer, output1D);
+          developer.log('✅ Inference (1D) completed');
           outputData = output1D;
+        } else {
+          throw Exception('Unexpected output shape: $outputShape');
         }
 
         // Process results
+        developer.log('Processing ${outputData.length} output values');
         int maxIdx = 0;
         double maxVal = outputData[0];
         for (int i = 1; i < outputData.length; i++) {
@@ -139,12 +111,14 @@ class TFLiteModel {
           }
         }
 
+        developer.log('Max prediction: index=$maxIdx, value=$maxVal');
         final probs = _softmax(outputData);
 
         for (int i = 0; i < _labels.length; i++) {
           developer.log('${_labels[i]}: ${outputData[i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
         }
 
+        developer.log('Returning result for label: ${_labels[maxIdx]}');
         return {
           'label': _labels[maxIdx],
           'confidence': probs[maxIdx],
@@ -155,7 +129,7 @@ class TFLiteModel {
           ),
         };
       } catch (e) {
-        developer.log('❌ Reshape/inference failed: $e', error: e);
+        developer.log('❌ Inference failed at step: $e', error: e);
         rethrow;
       }
     } catch (e) {
