@@ -52,46 +52,76 @@ class TFLiteModel {
     if (!_isLoaded) throw Exception('Model not loaded');
 
     try {
+      developer.log('========== INFERENCE START ==========');
+
       final imageBytes = await imageFile.readAsBytes();
+      developer.log('✅ Image bytes read: ${imageBytes.length}');
+
       final image = img.decodeImage(imageBytes);
       if (image == null) throw Exception('Failed to decode image');
+      developer.log('✅ Image decoded: ${image.width}x${image.height}');
 
       developer.log('🔄 Preprocessing image...');
       final input = _preprocessImage(image);
+      developer.log('✅ Preprocessed: ${input.length} values');
 
-      developer.log('🔄 Running inference...');
-      developer.log('Input size: ${input.length}');
+      developer.log('🔄 Checking model tensors...');
+      developer.log('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
+      developer.log('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
+      developer.log('Labels count: ${_labels.length}');
 
-      // Prepare output as List<double> directly
-      final output = List<double>.filled(_labels.length, 0.0);
-
-      // Convert input list to ByteBuffer format
+      developer.log('🔄 Converting to Float32List...');
       final inputBuffer = Float32List.fromList(input);
-      developer.log('Input buffer size: ${inputBuffer.length}');
+      developer.log('✅ Buffer size: ${inputBuffer.length}');
 
-      try {
-        _interpreter.run(inputBuffer, output);
-        developer.log('✅ Inference completed');
-      } catch (e) {
-        developer.log('❌ Interpreter error: $e');
-        developer.log('Model input tensor: ${_interpreter.getInputTensor(0)}');
-        developer.log('Model output tensor: ${_interpreter.getOutputTensor(0)}');
-        rethrow;
+      developer.log('🔄 Preparing output buffer...');
+      final outputShape = _interpreter.getOutputTensor(0).shape;
+      developer.log('Output shape: $outputShape');
+
+      late List<double> outputData;
+      if (outputShape.length == 2) {
+        developer.log('Output is 2D: treating as [1, ${outputShape[1]}]');
+        final output2D = List<List<double>>.filled(1, List<double>.filled(outputShape[1], 0.0));
+        developer.log('✅ 2D output buffer created');
+
+        developer.log('🔄 Running inference (2D)...');
+        try {
+          _interpreter.run(inputBuffer, output2D);
+          developer.log('✅ Inference completed successfully');
+          outputData = output2D[0];
+        } catch (e) {
+          developer.log('❌ 2D INFERENCE FAILED: $e');
+          rethrow;
+        }
+      } else {
+        developer.log('Output is 1D: ${outputShape[0]} values');
+        final output1D = List<double>.filled(outputShape[0], 0.0);
+        developer.log('✅ 1D output buffer created');
+
+        developer.log('🔄 Running inference (1D)...');
+        try {
+          _interpreter.run(inputBuffer, output1D);
+          developer.log('✅ Inference completed successfully');
+          outputData = output1D;
+        } catch (e) {
+          developer.log('❌ 1D INFERENCE FAILED: $e');
+          rethrow;
+        }
       }
 
       int maxIdx = 0;
-      double maxVal = output[0];
-      for (int i = 1; i < output.length; i++) {
-        if (output[i] > maxVal) {
-          maxVal = output[i];
+      double maxVal = outputData[0];
+      for (int i = 1; i < outputData.length; i++) {
+        if (outputData[i] > maxVal) {
+          maxVal = outputData[i];
           maxIdx = i;
         }
       }
 
-      final probs = _softmax(output);
+      final probs = _softmax(outputData);
 
       for (int i = 0; i < _labels.length; i++) {
-        developer.log('${_labels[i]}: ${output[i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
+        developer.log('${_labels[i]}: ${outputData[i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
       }
 
       return {

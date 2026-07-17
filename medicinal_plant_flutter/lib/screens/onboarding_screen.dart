@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({Key? key}) : super(key: key);
@@ -110,7 +109,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [page.color.withOpacity(0.3), Colors.white],
+          colors: [page.color.withValues(alpha: 0.3), Colors.white],
         ),
       ),
       child: Center(

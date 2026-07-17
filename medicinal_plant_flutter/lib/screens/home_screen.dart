@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:camera/camera.dart';
 import '../models/tflite_model.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/action_buttons.dart';
