@@ -22,6 +22,11 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
   bool _modelLoaded = false;
   String? _errorMessage;
 
+  final List<String> _sampleImages = [
+    'Aloe', 'Amla', 'Arjun', 'Ashoka', 'Bael', 'Guava',
+    'Jamun', 'Mint', 'Neem', 'Pepper', 'Tulsi', 'Hibiscus', 'Curry', 'weed'
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -42,17 +47,32 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
   }
 
   Future<void> _runInference() async {
-    if (_selectedImage == null) return;
+    if (_selectedImage == null) {
+      setState(() => _errorMessage = 'Please select an image first');
+      return;
+    }
 
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
     try {
       final result = await _model.predict(_selectedImage!);
       setState(() => _prediction = result);
     } catch (e) {
-      setState(() => _errorMessage = 'Inference error: $e');
+      debugPrint('Full error: $e');
+      setState(() => _errorMessage = 'Inference failed: $e');
     } finally {
       setState(() => _isProcessing = false);
     }
+  }
+
+  void _clearImage() {
+    setState(() {
+      _selectedImage = null;
+      _prediction = null;
+      _errorMessage = null;
+    });
   }
 
   Future<void> _selectImageFromGallery() async {
@@ -62,8 +82,8 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
       setState(() {
         _selectedImage = File(pickedFile.path);
         _prediction = null;
+        _errorMessage = null;
       });
-      await _runInference();
     }
   }
 
@@ -74,8 +94,8 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
       setState(() {
         _selectedImage = File(pickedFile.path);
         _prediction = null;
+        _errorMessage = null;
       });
-      await _runInference();
     }
   }
 
@@ -151,6 +171,27 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
                 isProcessing: _isProcessing,
               ),
               const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _isProcessing || _selectedImage == null ? null : _runInference,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Analyze'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _clearImage,
+                    icon: const Icon(Icons.clear),
+                    label: const Text('Clear'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               if (_prediction != null)
                 ResultCard(
                   plantName: _prediction!['label'] as String,
@@ -163,6 +204,25 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
                     child: CircularProgressIndicator(),
                   ),
                 ),
+              const SizedBox(height: 16),
+              Text(
+                'Sample Plants',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _sampleImages.map((plant) {
+                  return Chip(
+                    label: Text(plant),
+                    backgroundColor: Colors.green.shade100,
+                    labelStyle: TextStyle(color: Colors.green.shade800),
+                  );
+                }).toList(),
+              ),
             ],
           ),
         ),

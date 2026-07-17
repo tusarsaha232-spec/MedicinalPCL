@@ -60,25 +60,38 @@ class TFLiteModel {
       final input = _preprocessImage(image);
 
       developer.log('🔄 Running inference...');
-      final output = List<List<double>>.filled(1, List<double>.filled(_labels.length, 0.0));
+      developer.log('Input size: ${input.length}');
+
+      // Prepare output as List<double> directly
+      final output = List<double>.filled(_labels.length, 0.0);
 
       // Convert input list to ByteBuffer format
       final inputBuffer = Float32List.fromList(input);
-      _interpreter.run(inputBuffer, output);
+      developer.log('Input buffer size: ${inputBuffer.length}');
+
+      try {
+        _interpreter.run(inputBuffer, output);
+        developer.log('✅ Inference completed');
+      } catch (e) {
+        developer.log('❌ Interpreter error: $e');
+        developer.log('Model input tensor: ${_interpreter.getInputTensor(0)}');
+        developer.log('Model output tensor: ${_interpreter.getOutputTensor(0)}');
+        rethrow;
+      }
 
       int maxIdx = 0;
-      double maxVal = output[0][0];
-      for (int i = 1; i < output[0].length; i++) {
-        if (output[0][i] > maxVal) {
-          maxVal = output[0][i];
+      double maxVal = output[0];
+      for (int i = 1; i < output.length; i++) {
+        if (output[i] > maxVal) {
+          maxVal = output[i];
           maxIdx = i;
         }
       }
 
-      final probs = _softmax(output[0]);
+      final probs = _softmax(output);
 
       for (int i = 0; i < _labels.length; i++) {
-        developer.log('${_labels[i]}: ${output[0][i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
+        developer.log('${_labels[i]}: ${output[i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
       }
 
       return {
