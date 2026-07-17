@@ -89,9 +89,15 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Medicinal Plant Classifier'),
+        title: const Text('Plant Classifier'),
         centerTitle: true,
-        elevation: 2,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => Navigator.of(context).pushNamed('/about'),
+            tooltip: 'About App',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(

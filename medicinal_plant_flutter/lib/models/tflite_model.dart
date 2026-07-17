@@ -100,9 +100,9 @@ class TFLiteModel {
       for (int x = 0; x < 224; x++) {
         final pixel = resized.getPixelSafe(x, y);
 
-        final r = (pixel.r as double) / 255.0;
-        final g = (pixel.g as double) / 255.0;
-        final b = (pixel.b as double) / 255.0;
+        final r = (pixel.r is int ? (pixel.r as int).toDouble() : pixel.r as double) / 255.0;
+        final g = (pixel.g is int ? (pixel.g as int).toDouble() : pixel.g as double) / 255.0;
+        final b = (pixel.b is int ? (pixel.b as int).toDouble() : pixel.b as double) / 255.0;
 
         bytes.add((r - 0.5) / 0.5);
         bytes.add((g - 0.5) / 0.5);
