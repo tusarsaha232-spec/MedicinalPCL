@@ -3,6 +3,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'dart:io';
 import 'dart:developer' as developer;
+import 'dart:typed_data';
 
 class TFLiteModel {
   late Interpreter _interpreter;
@@ -59,8 +60,11 @@ class TFLiteModel {
       final input = _preprocessImage(image);
 
       developer.log('🔄 Running inference...');
-      final output = List<List<double>>.filled(1, List<double>.filled(_labels.length, 0));
-      _interpreter.run(input, output);
+      final output = List<List<double>>.filled(1, List<double>.filled(_labels.length, 0.0));
+
+      // Convert input list to ByteBuffer format
+      final inputBuffer = Float32List.fromList(input);
+      _interpreter.run(inputBuffer, output);
 
       int maxIdx = 0;
       double maxVal = output[0][0];
