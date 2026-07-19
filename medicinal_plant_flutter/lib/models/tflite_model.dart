@@ -70,51 +70,59 @@ class TFLiteModel {
       developer.log('Labels count: ${_labels.length}');
 
       developer.log('🔄 Reshaping input to 4D tensor [1, 224, 224, 3]...');
-      final input4D = <dynamic>[];
+      developer.log('   Input list length: ${input.length}');
 
       try {
         // Reshape flat list to [1, 224, 224, 3]
+        final input4D = <List<List<List<double>>>>[];
         var idx = 0;
-        final batch = <dynamic>[];
+
+        // Batch dimension (size 1)
+        final batch = <List<List<double>>>[];
 
         for (int y = 0; y < 224; y++) {
-          final row = <dynamic>[];
+          final row = <List<double>>[];
+
           for (int x = 0; x < 224; x++) {
-            final pixel = <double>[];
-            pixel.add(input[idx++]);     // R
-            pixel.add(input[idx++]);     // G
-            pixel.add(input[idx++]);     // B
+            // Check indices before accessing
+            if (idx + 2 >= input.length) {
+              throw Exception('Index out of bounds: idx=$idx, length=${input.length}');
+            }
+
+            final pixel = <double>[
+              input[idx],       // R
+              input[idx + 1],   // G
+              input[idx + 2],   // B
+            ];
+            idx += 3;
             row.add(pixel);
           }
           batch.add(row);
         }
+
         input4D.add(batch);
 
-        developer.log('✅ Input reshaped to [1, 224, 224, 3]');
-      } catch (e) {
-        developer.log('❌ Reshape failed: $e');
-        rethrow;
-      }
+        developer.log('✅ Input reshaped successfully to [1, 224, 224, 3]');
 
-      developer.log('🔄 Preparing output buffer...');
-      final outputShape = _interpreter.getOutputTensor(0).shape;
-      developer.log('Output shape: $outputShape');
+        // Now run inference with reshaped input
+        developer.log('🔄 Preparing output buffer...');
+        final outputShape = _interpreter.getOutputTensor(0).shape;
+        developer.log('Output shape: $outputShape');
 
-      developer.log('🔄 Running inference with proper 4D input...');
-      late List<double> outputData;
+        developer.log('🔄 Running inference...');
+        late List<double> outputData;
 
-      try {
         if (outputShape.length == 2) {
           developer.log('Creating 2D output [1, ${outputShape[1]}]');
           final output2D = List<List<double>>.filled(1, List<double>.filled(outputShape[1], 0.0));
-          developer.log('Running interpreter.run()...');
+          developer.log('Calling interpreter.run()...');
           _interpreter.run(input4D, output2D);
           developer.log('✅ Inference (2D) completed');
           outputData = output2D[0];
         } else if (outputShape.length == 1) {
           developer.log('Creating 1D output [${outputShape[0]}]');
           final output1D = List<double>.filled(outputShape[0], 0.0);
-          developer.log('Running interpreter.run()...');
+          developer.log('Calling interpreter.run()...');
           _interpreter.run(input4D, output1D);
           developer.log('✅ Inference (1D) completed');
           outputData = output1D;
@@ -151,7 +159,7 @@ class TFLiteModel {
           ),
         };
       } catch (e) {
-        developer.log('❌ Inference failed at step: $e', error: e);
+        developer.log('❌ Reshape/Inference failed: $e', error: e);
         rethrow;
       }
     } catch (e) {
