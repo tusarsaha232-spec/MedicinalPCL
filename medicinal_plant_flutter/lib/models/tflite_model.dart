@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 class TFLiteModel {
   late List<String> _labels;
   bool _isLoaded = false;
-  static const String _serverUrl = 'http://192.168.x.x:8000'; // UPDATE WITH YOUR PC IP
+  static const String _serverUrl = 'http://192.168.29.48:8000';
 
   bool get isLoaded => _isLoaded;
 
