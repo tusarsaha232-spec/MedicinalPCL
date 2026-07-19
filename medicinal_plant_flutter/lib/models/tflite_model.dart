@@ -1,46 +1,45 @@
 import 'package:flutter/services.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
-import 'package:image/image.dart' as img;
 import 'dart:io';
 import 'dart:developer' as developer;
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class TFLiteModel {
-  late Interpreter _interpreter;
   late List<String> _labels;
   bool _isLoaded = false;
+  static const String _serverUrl = 'http://192.168.x.x:8000'; // UPDATE WITH YOUR PC IP
 
   bool get isLoaded => _isLoaded;
 
   Future<void> loadModel() async {
     try {
-      developer.log('🔄 STEP 1: Loading TFLite model from assets...');
+      developer.log('🔄 Loading labels from assets...');
 
+      final labelData = await rootBundle.loadString('assets/labels.txt');
+      _labels = labelData.split('\n').where((l) => l.trim().isNotEmpty).toList();
+      developer.log('✅ Loaded ${_labels.length} classes: $_labels');
+
+      // Test connection to server
+      developer.log('🔄 Testing connection to API server...');
       try {
-        final byteData = await rootBundle.load('assets/vectvmixer_float32.tflite');
-        _interpreter = Interpreter.fromBuffer(byteData.buffer.asUint8List());
-        developer.log('✅ STEP 1 SUCCESS: Model interpreter loaded from buffer');
+        final response = await http.get(Uri.parse('$_serverUrl/health')).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw Exception('Server timeout'),
+        );
+
+        if (response.statusCode == 200) {
+          developer.log('✅ API server is ready!');
+          _isLoaded = true;
+          developer.log('✅✅✅ MODEL READY (Using FastAPI Server) ✅✅✅');
+        } else {
+          throw Exception('Server returned ${response.statusCode}');
+        }
       } catch (e) {
-        developer.log('❌ STEP 1 FAILED: ${e.toString()}');
+        developer.log('❌ Cannot connect to API server at $_serverUrl');
+        developer.log('   Make sure server.py is running on your PC');
+        developer.log('   Error: $e');
         rethrow;
       }
-
-      developer.log('🔄 STEP 2: Getting model shapes...');
-      final inputShape = _interpreter.getInputTensor(0).shape;
-      final outputShape = _interpreter.getOutputTensor(0).shape;
-      developer.log('✅ STEP 2 SUCCESS: Input: $inputShape, Output: $outputShape');
-
-      developer.log('🔄 STEP 3: Loading labels...');
-      try {
-        final labelData = await rootBundle.loadString('assets/labels.txt');
-        _labels = labelData.split('\n').where((l) => l.trim().isNotEmpty).toList();
-        developer.log('✅ STEP 3 SUCCESS: Loaded ${_labels.length} classes: $_labels');
-      } catch (e) {
-        developer.log('❌ STEP 3 FAILED: ${e.toString()}');
-        rethrow;
-      }
-
-      _isLoaded = true;
-      developer.log('✅✅✅ ALL STEPS COMPLETE - MODEL READY ✅✅✅');
     } catch (e) {
       developer.log('❌ MODEL INITIALIZATION FAILED: $e', error: e);
       rethrow;
@@ -51,164 +50,41 @@ class TFLiteModel {
     if (!_isLoaded) throw Exception('Model not loaded');
 
     try {
-      developer.log('========== INFERENCE START ==========');
+      developer.log('========== INFERENCE START (API SERVER) ==========');
 
       final imageBytes = await imageFile.readAsBytes();
       developer.log('✅ Image bytes read: ${imageBytes.length}');
 
-      final image = img.decodeImage(imageBytes);
-      if (image == null) throw Exception('Failed to decode image');
-      developer.log('✅ Image decoded: ${image.width}x${image.height}');
+      // Send image to server
+      developer.log('🔄 Sending to $_serverUrl/predict...');
+      final request = http.MultipartRequest('POST', Uri.parse('$_serverUrl/predict'))
+        ..files.add(http.MultipartFile.fromBytes('file', imageBytes, filename: 'image.jpg'));
 
-      developer.log('🔄 Preprocessing image...');
-      final input = _preprocessImage(image);
-      developer.log('✅ Preprocessed: ${input.length} values');
+      final response = await request.send().timeout(const Duration(seconds: 30));
+      developer.log('✅ Response: ${response.statusCode}');
 
-      developer.log('🔄 Checking model tensors...');
-      developer.log('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
-      developer.log('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
-      developer.log('Labels count: ${_labels.length}');
-
-      developer.log('🔄 Reshaping input to 4D tensor [1, 224, 224, 3]...');
-      developer.log('   Input list length: ${input.length}');
-
-      try {
-        // Reshape flat list to [1, 224, 224, 3]
-        final input4D = <List<List<List<double>>>>[];
-        var idx = 0;
-
-        // Batch dimension (size 1)
-        final batch = <List<List<double>>>[];
-
-        for (int y = 0; y < 224; y++) {
-          final row = <List<double>>[];
-
-          for (int x = 0; x < 224; x++) {
-            // Check indices before accessing
-            if (idx + 2 >= input.length) {
-              throw Exception('Index out of bounds: idx=$idx, length=${input.length}');
-            }
-
-            final pixel = <double>[
-              input[idx],       // R
-              input[idx + 1],   // G
-              input[idx + 2],   // B
-            ];
-            idx += 3;
-            row.add(pixel);
-          }
-          batch.add(row);
-        }
-
-        input4D.add(batch);
-
-        developer.log('✅ Input reshaped successfully to [1, 224, 224, 3]');
-
-        // Now run inference with reshaped input
-        developer.log('🔄 Preparing output buffer...');
-        final outputShape = _interpreter.getOutputTensor(0).shape;
-        developer.log('Output shape: $outputShape');
-
-        developer.log('🔄 Running inference...');
-        late List<double> outputData;
-
-        if (outputShape.length == 2) {
-          developer.log('Creating 2D output [1, ${outputShape[1]}]');
-          final output2D = List<List<double>>.filled(1, List<double>.filled(outputShape[1], 0.0));
-          developer.log('Calling interpreter.run()...');
-          _interpreter.run(input4D, output2D);
-          developer.log('✅ Inference (2D) completed');
-          outputData = output2D[0];
-        } else if (outputShape.length == 1) {
-          developer.log('Creating 1D output [${outputShape[0]}]');
-          final output1D = List<double>.filled(outputShape[0], 0.0);
-          developer.log('Calling interpreter.run()...');
-          _interpreter.run(input4D, output1D);
-          developer.log('✅ Inference (1D) completed');
-          outputData = output1D;
-        } else {
-          throw Exception('Unexpected output shape: $outputShape');
-        }
-
-        // Process results
-        developer.log('Processing ${outputData.length} output values');
-        int maxIdx = 0;
-        double maxVal = outputData[0];
-        for (int i = 1; i < outputData.length; i++) {
-          if (outputData[i] > maxVal) {
-            maxVal = outputData[i];
-            maxIdx = i;
-          }
-        }
-
-        developer.log('Max prediction: index=$maxIdx, value=$maxVal');
-        final probs = _softmax(outputData);
-
-        for (int i = 0; i < _labels.length; i++) {
-          developer.log('${_labels[i]}: ${outputData[i].toStringAsFixed(4)} (prob: ${probs[i].toStringAsFixed(4)})');
-        }
-
-        developer.log('Returning result for label: ${_labels[maxIdx]}');
-        return {
-          'label': _labels[maxIdx],
-          'confidence': probs[maxIdx],
-          'scores': Map.fromIterable(
-            List.generate(_labels.length, (i) => i),
-            key: (i) => _labels[i],
-            value: (i) => probs[i],
-          ),
-        };
-      } catch (e) {
-        developer.log('❌ Reshape/Inference failed: $e', error: e);
-        rethrow;
+      if (response.statusCode != 200) {
+        throw Exception('Server error: ${response.statusCode}');
       }
+
+      final responseBody = await response.stream.bytesToString();
+      final result = jsonDecode(responseBody) as Map<String, dynamic>;
+
+      developer.log('✅ Prediction: ${result['predicted_class']}');
+      developer.log('   Confidence: ${result['confidence']}');
+
+      return {
+        'label': result['predicted_class'] as String,
+        'confidence': (result['confidence'] as num).toDouble(),
+        'scores': result['all_predictions'] as Map<String, dynamic>,
+      };
     } catch (e) {
-      developer.log('❌ Inference error: $e', error: e);
+      developer.log('❌ Error: $e', error: e);
       rethrow;
     }
   }
 
-  List<double> _preprocessImage(img.Image image) {
-    final resized = img.copyResize(image, width: 224, height: 224);
-    final bytes = <double>[];
-
-    for (int y = 0; y < 224; y++) {
-      for (int x = 0; x < 224; x++) {
-        final pixel = resized.getPixelSafe(x, y);
-
-        final r = (pixel.r is int ? (pixel.r as int).toDouble() : pixel.r as double) / 255.0;
-        final g = (pixel.g is int ? (pixel.g as int).toDouble() : pixel.g as double) / 255.0;
-        final b = (pixel.b is int ? (pixel.b as int).toDouble() : pixel.b as double) / 255.0;
-
-        bytes.add((r - 0.5) / 0.5);
-        bytes.add((g - 0.5) / 0.5);
-        bytes.add((b - 0.5) / 0.5);
-      }
-    }
-
-    return bytes;
-  }
-
-  List<double> _softmax(List<double> values) {
-    final maxVal = values.reduce((a, b) => a > b ? a : b);
-    final exps = values.map((v) => _exp(v - maxVal)).toList();
-    final sum = exps.reduce((a, b) => a + b);
-    return exps.map((e) => e / sum).toList();
-  }
-
-  double _exp(double x) {
-    if (x > 20) return 1e9;
-    if (x < -20) return 0;
-    double result = 1.0;
-    double term = 1.0;
-    for (int i = 1; i < 20; i++) {
-      term *= x / i;
-      result += term;
-    }
-    return result;
-  }
-
   void dispose() {
-    _interpreter.close();
+    // No cleanup needed for HTTP client
   }
 }
