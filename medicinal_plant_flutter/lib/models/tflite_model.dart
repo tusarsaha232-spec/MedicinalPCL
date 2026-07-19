@@ -3,7 +3,6 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'dart:io';
 import 'dart:developer' as developer;
-import 'dart:typed_data';
 
 class TFLiteModel {
   late Interpreter _interpreter;
@@ -70,15 +69,38 @@ class TFLiteModel {
       developer.log('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
       developer.log('Labels count: ${_labels.length}');
 
-      developer.log('🔄 Converting to Float32List...');
-      final inputBuffer = Float32List.fromList(input);
-      developer.log('✅ Buffer size: ${inputBuffer.length}');
+      developer.log('🔄 Reshaping input to 4D tensor [1, 224, 224, 3]...');
+      final input4D = <dynamic>[];
+
+      try {
+        // Reshape flat list to [1, 224, 224, 3]
+        var idx = 0;
+        final batch = <dynamic>[];
+
+        for (int y = 0; y < 224; y++) {
+          final row = <dynamic>[];
+          for (int x = 0; x < 224; x++) {
+            final pixel = <double>[];
+            pixel.add(input[idx++]);     // R
+            pixel.add(input[idx++]);     // G
+            pixel.add(input[idx++]);     // B
+            row.add(pixel);
+          }
+          batch.add(row);
+        }
+        input4D.add(batch);
+
+        developer.log('✅ Input reshaped to [1, 224, 224, 3]');
+      } catch (e) {
+        developer.log('❌ Reshape failed: $e');
+        rethrow;
+      }
 
       developer.log('🔄 Preparing output buffer...');
       final outputShape = _interpreter.getOutputTensor(0).shape;
       developer.log('Output shape: $outputShape');
 
-      developer.log('🔄 Running inference with flat input...');
+      developer.log('🔄 Running inference with proper 4D input...');
       late List<double> outputData;
 
       try {
@@ -86,14 +108,14 @@ class TFLiteModel {
           developer.log('Creating 2D output [1, ${outputShape[1]}]');
           final output2D = List<List<double>>.filled(1, List<double>.filled(outputShape[1], 0.0));
           developer.log('Running interpreter.run()...');
-          _interpreter.run(inputBuffer, output2D);
+          _interpreter.run(input4D, output2D);
           developer.log('✅ Inference (2D) completed');
           outputData = output2D[0];
         } else if (outputShape.length == 1) {
           developer.log('Creating 1D output [${outputShape[0]}]');
           final output1D = List<double>.filled(outputShape[0], 0.0);
           developer.log('Running interpreter.run()...');
-          _interpreter.run(inputBuffer, output1D);
+          _interpreter.run(input4D, output1D);
           developer.log('✅ Inference (1D) completed');
           outputData = output1D;
         } else {
