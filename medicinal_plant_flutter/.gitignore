@@ -24,3 +24,4 @@ __pycache__/
 
 # Claude
 .claude/
+/assets/best_vectvmixer.pth
