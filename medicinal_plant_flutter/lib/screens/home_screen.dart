@@ -4,6 +4,7 @@ import '../models/tflite_model.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/result_card.dart';
+import '../widgets/asset_gallery.dart';
 import 'dart:io';
 
 class PlantClassifierScreen extends StatefulWidget {
@@ -22,8 +23,8 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
   String? _errorMessage;
 
   final List<String> _sampleImages = [
-    'Aloe', 'Amla', 'Arjun', 'Ashoka', 'Bael', 'Guava',
-    'Jamun', 'Mint', 'Neem', 'Pepper', 'Tulsi', 'Hibiscus', 'Curry', 'weed'
+    'Aloe', 'Neem', 'Ashoka', 'Centella', 'Hibiscus', 'Justicia',
+    'Kalanchoe', 'Mint', 'Mikania', 'Moringa', 'Tulsi', 'Amla', 'Arjun', 'Weed'
   ];
 
   @override
@@ -168,6 +169,30 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
                 onGallery: _selectImageFromGallery,
                 onCamera: _takePhotoWithCamera,
                 isProcessing: _isProcessing,
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (context) => SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.8,
+                    child: AssetGallery(
+                      onImageSelected: (file) {
+                        setState(() {
+                          _selectedImage = file;
+                          _prediction = null;
+                          _errorMessage = null;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Test Images'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade600,
+                ),
               ),
               const SizedBox(height: 16),
               Row(
