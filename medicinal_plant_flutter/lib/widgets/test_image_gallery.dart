@@ -18,19 +18,13 @@ class _TestImageGalleryState extends State<TestImageGallery> {
   @override
   Widget build(BuildContext context) {
     if (_selectedPlant == null) {
-      // Show plant categories
-      final plants = testPlantImages.entries
-          .where((e) => e.value.isNotEmpty)
-          .map((e) => e.key)
-          .toList();
-
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.all(12),
             child: Text(
-              'Test Plants (${plants.length})',
+              'Test Plants (${PlantAssets.plantNames.length})',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
@@ -43,11 +37,11 @@ class _TestImageGalleryState extends State<TestImageGallery> {
                 crossAxisSpacing: 12,
                 childAspectRatio: 1,
               ),
-              itemCount: plants.length,
+              itemCount: PlantAssets.plantNames.length,
               itemBuilder: (context, index) {
-                final plant = plants[index];
-                final count = testPlantImages[plant]?.length ?? 0;
-                final displayName = plant.replaceAll('_', ' ');
+                final plant = PlantAssets.plantNames[index];
+                final count = PlantAssets.getImageCount(plant);
+                final displayName = PlantAssets.getDisplayName(plant);
 
                 return GestureDetector(
                   onTap: () => setState(() => _selectedPlant = plant),
@@ -96,8 +90,7 @@ class _TestImageGalleryState extends State<TestImageGallery> {
         ],
       );
     } else {
-      // Show images for selected plant
-      final images = testPlantImages[_selectedPlant] ?? [];
+      final images = PlantAssets.getImages(_selectedPlant!);
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +105,7 @@ class _TestImageGalleryState extends State<TestImageGallery> {
                 ),
                 Expanded(
                   child: Text(
-                    '${_selectedPlant?.replaceAll('_', ' ')} (${images.length} images)',
+                    '${PlantAssets.getDisplayName(_selectedPlant!)} (${images.length} images)',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -131,46 +124,12 @@ class _TestImageGalleryState extends State<TestImageGallery> {
               itemCount: images.length,
               itemBuilder: (context, index) {
                 final imagePath = images[index];
-
                 return GestureDetector(
                   onTap: () => _loadAndSelect(imagePath),
                   child: Card(
                     elevation: 1,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(
-                          image: AssetImage(imagePath),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, Colors.black26],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _ImageThumbnail(imagePath: imagePath, index: index),
                   ),
                 );
               },
@@ -185,15 +144,101 @@ class _TestImageGalleryState extends State<TestImageGallery> {
     try {
       final ByteData data = await rootBundle.load(assetPath);
       final Directory tempDir = Directory.systemTemp;
-      final File tempFile = File('${tempDir.path}/test_plant_image.jpg');
+      final File tempFile = File('${tempDir.path}/test_plant_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await tempFile.writeAsBytes(data.buffer.asUint8List());
       widget.onImageSelected(tempFile);
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      debugPrint('Error loading image: $e');
+      debugPrint('❌ Error loading image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
+  }
+}
+
+class _ImageThumbnail extends StatefulWidget {
+  final String imagePath;
+  final int index;
+
+  const _ImageThumbnail({required this.imagePath, required this.index});
+
+  @override
+  State<_ImageThumbnail> createState() => _ImageThumbnailState();
+}
+
+class _ImageThumbnailState extends State<_ImageThumbnail> {
+  bool _loaded = false;
+  bool _error = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadImage();
+  }
+
+  void _loadImage() {
+    final AssetImage assetImage = AssetImage(widget.imagePath);
+    precacheImage(assetImage, context).then((_) {
+      if (mounted) {
+        setState(() {
+          _loaded = true;
+          _error = false;
+        });
+      }
+    }).catchError((e) {
+      debugPrint('❌ Failed to load: ${widget.imagePath} - $e');
+      if (mounted) {
+        setState(() {
+          _loaded = true;
+          _error = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_loaded) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(height: 4),
+              Text('${widget.index + 1}', style: const TextStyle(fontSize: 10)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_error) {
+      return Container(
+        color: Colors.grey.shade300,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.broken_image, color: Colors.red.shade400, size: 28),
+            const SizedBox(height: 4),
+            Text('${widget.index + 1}', style: const TextStyle(fontSize: 10)),
+          ],
+        ),
+      );
+    }
+
+    return Image.asset(
+      widget.imagePath,
+      fit: BoxFit.cover,
+      cacheHeight: 200,
+      cacheWidth: 200,
+      filterQuality: FilterQuality.low,
+    );
   }
 }

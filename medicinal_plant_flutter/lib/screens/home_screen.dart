@@ -5,6 +5,7 @@ import '../widgets/image_preview.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/result_card.dart';
 import '../widgets/test_image_gallery.dart';
+import '../constants/asset_images.dart';
 import 'dart:io';
 
 class PlantClassifierScreen extends StatefulWidget {
@@ -22,10 +23,10 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
   bool _modelLoaded = false;
   String? _errorMessage;
 
-  final List<String> _sampleImages = [
-    'Aloe', 'Neem', 'Ashoka', 'Centella', 'Hibiscus', 'Justicia',
-    'Kalanchoe', 'Mint', 'Mikania', 'Moringa', 'Tulsi', 'Amla', 'Arjun', 'Weed'
-  ];
+  // Display names from constants
+  List<String> get _sampleImages => PlantAssets.plantNames
+      .map((plant) => PlantAssets.getDisplayName(plant))
+      .toList();
 
   @override
   void initState() {
