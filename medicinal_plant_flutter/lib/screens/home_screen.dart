@@ -4,7 +4,7 @@ import '../models/tflite_model.dart';
 import '../widgets/image_preview.dart';
 import '../widgets/action_buttons.dart';
 import '../widgets/result_card.dart';
-import '../widgets/asset_gallery.dart';
+import '../widgets/test_image_gallery.dart';
 import 'dart:io';
 
 class PlantClassifierScreen extends StatefulWidget {
@@ -177,7 +177,7 @@ class _PlantClassifierScreenState extends State<PlantClassifierScreen> {
                   isScrollControlled: true,
                   builder: (context) => SizedBox(
                     height: MediaQuery.of(context).size.height * 0.8,
-                    child: AssetGallery(
+                    child: TestImageGallery(
                       onImageSelected: (file) {
                         setState(() {
                           _selectedImage = file;
