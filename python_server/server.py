@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""FastAPI server for medicinal plant classification - Render ready"""
+"""FastAPI server for medicinal plant classification - Production Ready for Render"""
 
 import os
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -115,29 +116,52 @@ class VECTVMixer(nn.Module):
         tv_loss = 1e-4*tv1 + 5e-5*tv2 + 1e-4*tv3
         return logits, tv_loss
 
-app = FastAPI(title="Medicinal Plant Classifier", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# Initialize FastAPI
+app = FastAPI(
+    title="Medicinal Plant Classifier API",
+    description="Classify medicinal plants using VECTVMixer model",
+    version="1.0.0"
+)
 
+# Add CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load model and labels
 logger.info("🔄 Loading model...")
 device = torch.device('cpu')
-model = VECTVMizer(num_classes=10)
+model = VECTVMixer(num_classes=10)
 
-try:
-    model.load_state_dict(torch.load('best_vectvmixer.pth', map_location=device))
-    logger.info("✅ Model loaded")
-except Exception as e:
-    logger.error(f"❌ Model error: {e}")
+model_path = 'best_vectvmixer.pth'
+if os.path.exists(model_path):
+    try:
+        model.load_state_dict(torch.load(model_path, map_location=device))
+        logger.info(f"✅ Model loaded from {model_path}")
+    except Exception as e:
+        logger.error(f"❌ Error loading model: {e}")
+        sys.exit(1)
+else:
+    logger.error(f"❌ Model file not found: {model_path}")
+    sys.exit(1)
 
 model.to(device)
 model.eval()
 
+# Load labels
+labels_path = 'labels.txt'
 labels = []
-try:
-    with open('labels.txt', 'r') as f:
+if os.path.exists(labels_path):
+    with open(labels_path, 'r') as f:
         labels = [line.strip() for line in f if line.strip()]
-    logger.info(f"✅ Loaded {len(labels)} labels")
-except Exception as e:
-    logger.error(f"❌ Labels error: {e}")
+    logger.info(f"✅ Loaded {len(labels)} plant labels")
+else:
+    logger.error(f"❌ Labels file not found: {labels_path}")
+    sys.exit(1)
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -145,29 +169,49 @@ transform = transforms.Compose([
     transforms.Normalize([0.5]*3, [0.5]*3)
 ])
 
+logger.info("✅ Server ready!")
+
 def softmax(x):
     exp_x = np.exp(x - np.max(x))
     return exp_x / np.sum(exp_x)
 
 @app.get("/")
 async def root():
-    return {"name": "Medicinal Plant Classifier", "version": "1.0.0"}
+    return {
+        "name": "Medicinal Plant Classifier",
+        "description": "API for plant classification",
+        "version": "1.0.0",
+        "endpoints": {"/health", "/predict"}
+    }
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": "VECTVMixer", "classes": len(labels)}
+    return {
+        "status": "ok",
+        "model": "VECTVMixer",
+        "classes": len(labels),
+        "version": "1.0.0"
+    }
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     try:
+        if not labels:
+            raise HTTPException(status_code=500, detail="Model labels not loaded")
+
         contents = await file.read()
         image = Image.open(BytesIO(contents))
+        logger.info(f"📸 Received image: {file.filename}")
+
         img_tensor = transform(image).unsqueeze(0).to(device)
+
         with torch.no_grad():
             logits, _ = model(img_tensor)
+
         logits_np = logits.cpu().numpy().flatten()
         pred_idx = np.argmax(logits_np)
         probs = softmax(logits_np)
+
         return {
             "success": True,
             "predicted_class": labels[pred_idx] if pred_idx < len(labels) else "Unknown",
@@ -175,9 +219,12 @@ async def predict(file: UploadFile = File(...)):
             "all_predictions": {labels[i]: float(probs[i]) for i in range(len(labels))}
         }
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
-        return {"success": False, "error": str(e)}
+        logger.error(f"❌ Prediction error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

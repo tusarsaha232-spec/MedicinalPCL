@@ -1,0 +1,28 @@
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.log
+
+# Android
+android/.gradle/
+android/local.properties
+android/.kotlin/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude
+.claude/
+/assets/best_vectvmixer.pth
+test_images
