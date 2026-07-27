@@ -132,10 +132,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Load labels first (to get class count)
+labels_path = 'labels.txt'
+labels = []
+if os.path.exists(labels_path):
+    with open(labels_path, 'r') as f:
+        labels = [line.strip() for line in f if line.strip()]
+    logger.info(f"✅ Loaded {len(labels)} plant labels")
+else:
+    logger.error(f"❌ Labels file not found: {labels_path}")
+    sys.exit(1)
+
 # Load model and labels
 logger.info("🔄 Loading model...")
 device = torch.device('cpu')
-model = VECTVMixer(num_classes=10)
+model = VECTVMixer(num_classes=len(labels))
 
 model_path = 'best_vectvmixer.pth'
 if os.path.exists(model_path):
@@ -151,17 +162,6 @@ else:
 
 model.to(device)
 model.eval()
-
-# Load labels
-labels_path = 'labels.txt'
-labels = []
-if os.path.exists(labels_path):
-    with open(labels_path, 'r') as f:
-        labels = [line.strip() for line in f if line.strip()]
-    logger.info(f"✅ Loaded {len(labels)} plant labels")
-else:
-    logger.error(f"❌ Labels file not found: {labels_path}")
-    sys.exit(1)
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
