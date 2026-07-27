@@ -7,4 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD sh -c "gunicorn -w 1 -b 0.0.0.0:\$PORT --timeout 120 server:app"
+ENV WEB_CONCURRENCY=1
+CMD sh -c "gunicorn --workers 1 --worker-class sync --timeout 120 --bind 0.0.0.0:\$PORT server:app"
