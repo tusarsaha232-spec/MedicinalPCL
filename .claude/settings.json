@@ -17,7 +17,12 @@
       "PowerShell(Get-ChildItem \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\" -Force | Select-Object Name, @{N=\"Size\\(MB\\)\"; E={if\\($_.PSIsContainer\\){\"Folder\"}else{[math]::Round\\($_.Length / 1MB, 2\\)}}})",
       "PowerShell(Get-ChildItem \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\best_vectvmixer\" -Force | Select-Object Name, @{N=\"Size\\(MB\\)\"; E={if\\($_.PSIsContainer\\){\"Folder\"}else{[math]::Round\\($_.Length / 1MB, 2\\)}}})",
       "PowerShell(Get-ChildItem \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\best_vectvmixer\\\\data\" -Force | Select-Object Name, @{N=\"Size\\(MB\\)\"; E={if\\($_.PSIsContainer\\){\"Folder\"}else{[math]::Round\\($_.Length / 1MB, 2\\)}}})",
-      "PowerShell(C:\\\\Python312\\\\python.exe -m pip install onnx onnx-tf -q)"
+      "PowerShell(C:\\\\Python312\\\\python.exe -m pip install onnx onnx-tf -q)",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\test_images\\\\Aloe_barbadensis_miller\\\\\" | Select-Object -First 5 | ForEach-Object { $_.Name })",
+      "PowerShell(Get-ChildItem -Path \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\test_images\\\\\" -Directory | ForEach-Object { $_.Name })",
+      "PowerShell(New-Item -ItemType Directory -Path \"d:\\\\medi\\\\python_server\" -Force)",
+      "PowerShell(Copy-Item -Path \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\best_vectvmixer.pth\" -Destination \"d:\\\\medi\\\\python_server\\\\\" -Force)",
+      "PowerShell(Copy-Item -Path \"d:\\\\medi\\\\medicinal_plant_flutter\\\\assets\\\\labels.txt\" -Destination \"d:\\\\medi\\\\python_server\\\\\" -Force)"
     ]
   }
 }
