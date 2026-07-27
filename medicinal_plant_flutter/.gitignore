@@ -1,0 +1,28 @@
+# Flutter
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+*.iml
+
+# Android
+android/.gradle
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+
+# iOS
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Pods/
+
+# Other
+.env
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.zip
