@@ -43,7 +43,7 @@ class AboutScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'This application uses advanced AI and machine learning to identify medicinal plants from photos. Simply take a picture or upload an image of a plant leaf, and the app will identify the plant and provide information about its medicinal properties.',
+                'This college project implements a custom deep learning classification model to identify medicinal plants from photos. Simply take a picture or upload an image of a plant leaf, and the app will identify the plant and provide information about its medicinal properties.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
@@ -67,7 +67,7 @@ class AboutScreen extends StatelessWidget {
               const SizedBox(height: 32),
               Center(
                 child: Text(
-                  'Built with ❤️ using Flutter & TensorFlow Lite',
+                  'College Project - Built with ❤️ using Flutter & Custom CNN Model',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey,
                       ),

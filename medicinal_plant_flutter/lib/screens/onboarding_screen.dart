@@ -14,19 +14,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingPage> _pages = [
     OnboardingPage(
       title: 'Identify Plants',
-      description: 'Easily identify medicinal plants using AI-powered image recognition',
+      description: 'Use our custom deep learning model to instantly identify medicinal plants from photos. Just point and tap!',
       icon: Icons.nature,
       color: Colors.green.shade400,
     ),
     OnboardingPage(
       title: 'Learn Benefits',
-      description: 'Discover health benefits and medicinal properties of each plant',
+      description: 'Discover health benefits, medicinal properties, and traditional uses of 14 different medicinal plants',
       icon: Icons.health_and_safety,
       color: Colors.blue.shade400,
     ),
     OnboardingPage(
       title: 'Get Started',
-      description: 'Take photos or select images to start identifying plants now!',
+      description: 'Capture with camera, choose from gallery, or test with sample images from our collection',
       icon: Icons.camera_alt,
       color: Colors.orange.shade400,
     ),

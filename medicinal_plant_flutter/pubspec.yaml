@@ -27,4 +27,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
-    - assets/test_images/
+    - assets/test_images/Aloe_barbadensis_miller/
+    - assets/test_images/Azadirachta_indica/
+    - assets/test_images/Calotropis_gigantea/
+    - assets/test_images/Centella_asiatica/
+    - assets/test_images/Hibiscus_rosa_sinensis/
+    - assets/test_images/Justicia_adhatoda/
+    - assets/test_images/Kalanchoe_pinnata/
+    - assets/test_images/Mentha_arvensis/
+    - assets/test_images/Mikania_micrantha/
+    - assets/test_images/Moringa_oleifera/

@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 class TFLiteModel {
   late List<String> _labels;
   bool _isLoaded = false;
-  static const String _serverUrl = 'http://192.168.29.48:3000';
+  static const String _serverUrl = 'https://medicinal-plant-classifier.onrender.com';
 
   bool get isLoaded => _isLoaded;
 
